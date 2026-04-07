@@ -280,6 +280,9 @@ const ProfiloIcon = ({ profilo }) => {
   return <Icon d={d} size={16} style={{ color: "#888" }} />;
 };
 
+// Alias used by detail pages that have their own local mock data with a `type` field
+const TypeIcon = ({ type }) => <ProfiloIcon profilo={type} />;
+
 // ─── Styles ──────────────────────────────────────────────────────────
 const S = {
   page: { background: "#f7f8f6", minHeight: "100vh", fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif" },
