@@ -2879,10 +2879,10 @@ function ValutazioneList({ suppliers, data, setData }) {
 }
 
 function ValutazioniPage() {
-  const [tab, setTab]   = useState("nonTecnici");
+  const [tab, setTab]   = useState("economica");
   const [data, setData] = useState(VALUTAZIONI_INIT);
 
-  const ntIds = SUPPLIERS.filter(s => s.tipo === "NT").map(s => s.id);
+  const allIds = SUPPLIERS.map(s => s.id);
   const tIds  = SUPPLIERS.filter(s => s.tipo === "T").map(s => s.id);
 
   return (
@@ -2891,12 +2891,12 @@ function ValutazioniPage() {
       <p style={S.subtitle}>Valutazioni dei fornitori per categoria commerciale</p>
 
       <div style={{ display: "flex", borderBottom: "1px solid #e8e8e5", marginBottom: 20 }}>
-        <button style={S.tab(tab === "nonTecnici")} onClick={() => setTab("nonTecnici")}>Fornitori non tecnici</button>
-        <button style={S.tab(tab === "tecnici")}    onClick={() => setTab("tecnici")}>Fornitori Tecnici</button>
+        <button style={S.tab(tab === "economica")}    onClick={() => setTab("economica")}>Valutazione Economica</button>
+        <button style={S.tab(tab === "serviceLead")}  onClick={() => setTab("serviceLead")}>Valutazione Service Lead</button>
       </div>
 
-      {tab === "nonTecnici" && <ValutazioneList suppliers={ntIds} data={data} setData={setData} />}
-      {tab === "tecnici"    && <ValutazioneList suppliers={tIds}  data={data} setData={setData} />}
+      {tab === "economica"   && <ValutazioneList suppliers={allIds} data={data} setData={setData} />}
+      {tab === "serviceLead" && <ValutazioneList suppliers={tIds}   data={data} setData={setData} />}
     </div>
   );
 }
