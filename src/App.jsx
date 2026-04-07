@@ -1,31 +1,41 @@
 // 👇 REPLACE THIS ENTIRE FILE with your artifact's code
 // Just make sure the last line is:  export default YourComponentName
 
-// ─── admin_side_app_VER6 ─────────────────────────────────────────────
-// Version: VER6
-// Initialized: 2026-04-01
-// Base: admin_side_app_VER5.jsx
+// ─── admin_side_app_VER3_1 ───────────────────────────────────────────
+// Version: VER3_1
+// Initialized: 2026-04-07
+// Base: admin_side_app_VER3_0.jsx
 // Changes in this version:
-//   1. Fornitori supplier stato values remapped:
-//      Attivo     → Qualificato  (green)
-//      In attesa  → Incompleto   (red)
-//      Incompleto → Incompleto   (red)
-//      Sospeso    → Inizializzato (yellow)
-//   2. statusBadge map updated with new keys
+//   1. Removed UtentiPage component and its nav/render entries
+//   2. Added star icon to icons object
+//   3. Added ValutazioniPage with two empty tabs: Fornitori non tecnici / Fornitori Tecnici
+//   4. Added "Valutazioni" to NAV at position 4 (before Schede di qualifica)
+//   5. Rebuilt SUPPLIERS mock data: new fields profilo / tipo / categorie / val, removed stato / categoria
+//   6. Replaced TypeIcon with ProfiloIcon (prof / soc / montana)
+//   7. Rebuilt FornitoriPage table: Profilo | Tipo | Nome | Categorie | Val | Azioni
+//   8. Added categoriaTag helper for coloured category tags (verde / giallo / rosso)
 // ─────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 // ─── Mock Data ───────────────────────────────────────────────────────
 const SUPPLIERS = [
-  { id: 1, name: "Marco Bianchi", type: "prof", stato: "Qualificato", categoria: "Consulenza fiscale" },
-  { id: 2, name: "Rossi & Partners S.r.l.", type: "soc", stato: "Qualificato", categoria: "Servizi legali" },
-  { id: 3, name: "Giulia Ferri", type: "prof", stato: "Incompleto", categoria: "Architettura" },
-  { id: 4, name: "TechBuild S.p.A.", type: "soc", stato: "Incompleto", categoria: "Ingegneria civile" },
-  { id: 5, name: "Luca Moretti", type: "prof", stato: "Inizializzato", categoria: "Consulenza ambientale" },
-  { id: 6, name: "GreenWorks S.r.l.", type: "soc", stato: "Qualificato", categoria: "Manutenzione" },
-  { id: 7, name: "Anna Colombo", type: "prof", stato: "Qualificato", categoria: "Design interni" },
-  { id: 8, name: "Edilizia Moderna S.p.A.", type: "soc", stato: "Incompleto", categoria: "Costruzioni" },
+  { id: 1, name: "Marco Bianchi",          profilo: "prof", tipo: "T",  val: "3/5",
+    categorie: [{ nome: "GIS", stato: "verde" }, { nome: "CAD", stato: "verde" }, { nome: "Idrogeologia", stato: "verde" }, { nome: "Sicurezza cantieri", stato: "giallo" }, { nome: "Due Diligence", stato: "rosso" }] },
+  { id: 2, name: "Rossi & Partners S.r.l.", profilo: "soc",  tipo: "T",  val: "2/5",
+    categorie: [{ nome: "VIA", stato: "verde" }, { nome: "VAS", stato: "giallo" }] },
+  { id: 3, name: "Giulia Ferri",            profilo: "prof", tipo: "T",  val: "4/5",
+    categorie: [{ nome: "Strutturale", stato: "verde" }] },
+  { id: 4, name: "TechBuild S.p.A.",        profilo: "soc",  tipo: "T",  val: "N/D",
+    categorie: [{ nome: "BIM", stato: "verde" }, { nome: "CAD", stato: "giallo" }, { nome: "Pratiche edilizie", stato: "giallo" }, { nome: "Topografia", stato: "rosso" }] },
+  { id: 5, name: "Luca Moretti",            profilo: "prof", tipo: "T",  val: "N/D",
+    categorie: [{ nome: "Geologia", stato: "giallo" }, { nome: "Idrogeologia", stato: "giallo" }] },
+  { id: 6, name: "GreenWorks S.r.l.",       profilo: "montana", tipo: "NT", val: "5/5",
+    categorie: [{ nome: "Manutenzione verde", stato: "verde" }] },
+  { id: 7, name: "Anna Colombo",            profilo: "prof", tipo: "T",  val: "3/5",
+    categorie: [{ nome: "Paesaggio", stato: "verde" }, { nome: "Progettazione del paesaggio", stato: "verde" }] },
+  { id: 8, name: "Splendida S.r.l.",        profilo: "soc",  tipo: "NT", val: "N/D",
+    categorie: [{ nome: "Pulizie", stato: "giallo" }] },
 ];
 
 const QUALIFICHE = [
@@ -77,6 +87,81 @@ const QUALIFICHE = [
   { id: 46, name: "Sicurezza aziendale (HS)", applies: "Entrambi", categoria: "Tecnica", attive: 7, inCorso: 2, richieste: 2 },
   { id: 47, name: "Sostenibilità ambientale", applies: "Entrambi", categoria: "Tecnica", attive: 5, inCorso: 1, richieste: 4 },
   { id: 48, name: "ISO", applies: "Entrambi", categoria: "Tecnica", attive: 9, inCorso: 3, richieste: 2 },
+];
+
+const CATEGORIE_COMMERCIALI = [
+  // ── Tecnica — drawn from QUALIFICHE ──────────────────────────────
+  { id: 1,  nome: "Autorizzazioni",                                              tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 2,  nome: "VIA",                                                         tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 3,  nome: "VAS",                                                         tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 4,  nome: "Pratiche edilizie",                                           tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 5,  nome: "Pianificazione e vincolistica",                               tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 6,  nome: "Paesaggio",                                                   tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 7,  nome: "Archeologia",                                                 tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 8,  nome: "Acustica",                                                    tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 9,  nome: "Atmosfera",                                                   tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 10, nome: "Biodiversità - VINCA",                                        tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 11, nome: "Agronomia",                                                   tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 12, nome: "Analisi di rischio",                                          tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 13, nome: "GIS",                                                         tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 14, nome: "Civile",                                                      tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 15, nome: "Geotecnica",                                                  tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 16, nome: "Idraulica",                                                   tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 17, nome: "Strutturale",                                                 tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 18, nome: "Elettrica",                                                   tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 19, nome: "Processo",                                                    tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 20, nome: "Antincendio",                                                 tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 21, nome: "Progettazione del paesaggio",                                 tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 22, nome: "Ingegneria per adattamenti ai cambiamenti climatici",         tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 23, nome: "Sostenibilità per la progettazione: LCA",                    tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 24, nome: "Sostenibilità per la progettazione: Carbon footprint",       tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 25, nome: "Sostenibilità per la progettazione: Sostenibilità sociale",  tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 26, nome: "CAM",                                                         tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 27, nome: "Computi metrici e capitolati",                                tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 28, nome: "Efficienza energetica",                                       tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 29, nome: "Idrogeologia",                                                tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 30, nome: "Topografia",                                                  tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 31, nome: "CAD",                                                         tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 32, nome: "BIM",                                                         tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 33, nome: "Collaudatore",                                                tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 34, nome: "Direzione lavori",                                            tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 35, nome: "Sicurezza cantieri",                                          tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 36, nome: "Due diligence",                                               tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 37, nome: "Geologia",                                                    tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 38, nome: "Esecuzione indagini",                                         tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 39, nome: "Amianto",                                                     tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 40, nome: "Sicurezza aziendale (HS)",                                    tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 41, nome: "Sostenibilità ambientale",                                    tipologia: "Tecnica", applicabile: "Entrambi" },
+  { id: 42, nome: "ISO",                                                         tipologia: "Tecnica",     applicabile: "Entrambi" },
+  // ── Non tecnica ──────────────────────────────────────────────────
+  { id: 43, nome: "Pulizie",                                                     tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 44, nome: "Manutenzione ordinaria e straordinaria",                      tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 45, nome: "Manutenzione verde",                                          tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 46, nome: "Forniture arredi",                                            tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 47, nome: "Forniture Cancelleria",                                       tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 48, nome: "Forniture DPI",                                               tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 49, nome: "Dotazioni Informatiche",                                      tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 50, nome: "Materiale cucina",                                            tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 51, nome: "Studi notarili",                                              tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 52, nome: "Avvocati",                                                    tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 53, nome: "Gestione rifiuti uffici",                                     tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 54, nome: "Enti fiera / organizzatori eventi",                           tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 55, nome: "Software",                                                    tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 56, nome: "Allestitori",                                                 tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 57, nome: "Forniture e riparazioni attrezzature tecniche (es. drone)",   tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 58, nome: "Copisteria",                                                  tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 59, nome: "Catering ufficio",                                            tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 60, nome: "Catering fiera",                                              tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 61, nome: "Servizi in fiera",                                            tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 62, nome: "Autonoleggi",                                                 tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 63, nome: "Agenzie viaggio",                                             tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 64, nome: "Hotel / ristoranti",                                          tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 65, nome: "Trasporti",                                                   tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 66, nome: "Associazioni",                                                tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 67, nome: "Riviste",                                                     tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 68, nome: "Banche dati",                                                 tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 69, nome: "Enti formativi",                                              tipologia: "Non tecnica", applicabile: "Entrambi" },
+  { id: 70, nome: "Enti pubblici",                                               tipologia: "Non tecnica", applicabile: "Entrambi" },
 ];
 
 const RICHIESTE = [
@@ -181,10 +266,17 @@ const icons = {
   prof: <><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4-4v2"/></>,
   soc: <><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/></>,
   sort: <><polyline points="7 3 7 21"/><polyline points="3 7 7 3 11 7"/><polyline points="17 21 17 3"/><polyline points="13 17 17 21 21 17"/></>,
+  categorie: <><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 8h4"/><path d="M7 12h10"/></>,
+  valutazioni: <><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></>,
 };
 
-const TypeIcon = ({ type }) => {
-  const d = type === "prof" ? icons.prof : icons.soc;
+const ProfiloIcon = ({ profilo }) => {
+  if (profilo === "montana") return (
+    <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#00833E", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", lineHeight: 1 }}>M</span>
+    </div>
+  );
+  const d = profilo === "prof" ? icons.prof : icons.soc;
   return <Icon d={d} size={16} style={{ color: "#888" }} />;
 };
 
@@ -241,6 +333,8 @@ export default function App() {
   const [schedaBackPage, setSchedaBackPage] = useState("fornitori");
   const [schedaOnBack, setSchedaOnBack] = useState(null);
   const [qualificaDetail, setQualificaDetail] = useState(null);
+  const [categoriaDetail, setCategoriaDetail] = useState(null);
+  const [nuovoFornitore, setNuovoFornitore] = useState(false);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -251,6 +345,8 @@ export default function App() {
     setPage(p);
     setSchedaSupplier(null);
     setQualificaDetail(null);
+    setCategoriaDetail(null);
+    setNuovoFornitore(false);
   };
 
   // Open scheda from any context — caller sets back destination
@@ -276,8 +372,6 @@ export default function App() {
           <button onClick={() => { setSchedaSupplier(null); if (schedaOnBack) schedaOnBack(); else setPage(schedaBackPage); }} style={{ ...S.btnGhost, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "7px 16px" }}>
             <Icon d={icons.back} size={16} /> {schedaBackLabel}
           </button>
-          <h1 style={S.h1}>{schedaSupplier.name}</h1>
-          <p style={S.subtitle}>Scheda Fornitore — {schedaSupplier.type === "prof" ? "Professionista" : "Società"}</p>
           <SchedaFornitore supplier={schedaSupplier} showToast={showToast} />
         </div>
         {toast && <Toast msg={toast} />}
@@ -306,6 +400,48 @@ export default function App() {
     );
   }
 
+  // Nuovo Fornitore — creation page
+  if (nuovoFornitore) {
+    const sW = sidebarExpanded ? 240 : 56;
+    return (
+      <div style={S.page}>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+        <Header expanded={sidebarExpanded} onToggle={() => setSidebarExpanded(!sidebarExpanded)} />
+        <Sidebar page={page} onNav={nav} expanded={sidebarExpanded} />
+        <div style={S.main(sW)}>
+          <button onClick={() => setNuovoFornitore(false)} style={{ ...S.btnGhost, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "7px 16px" }}>
+            <Icon d={icons.back} size={16} /> Torna ai fornitori
+          </button>
+          <h1 style={S.h1}>Nuovo Fornitore</h1>
+          <p style={S.subtitle}>Configura il profilo del nuovo fornitore</p>
+          <NuovoFornitoreForm showToast={showToast} onComplete={() => { setNuovoFornitore(false); showToast("Fornitore creato con successo"); }} />
+        </div>
+        {toast && <Toast msg={toast} />}
+      </div>
+    );
+  }
+
+  // Categoria Commerciale detail page
+  if (categoriaDetail) {
+    const sW = sidebarExpanded ? 240 : 56;
+    return (
+      <div style={S.page}>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+        <Header expanded={sidebarExpanded} onToggle={() => setSidebarExpanded(!sidebarExpanded)} />
+        <Sidebar page={page} onNav={nav} expanded={sidebarExpanded} />
+        <div style={S.main(sW)}>
+          <button onClick={() => setCategoriaDetail(null)} style={{ ...S.btnGhost, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "7px 16px" }}>
+            <Icon d={icons.back} size={16} /> Torna alle categorie commerciali
+          </button>
+          <h1 style={S.h1}>{categoriaDetail.nome}</h1>
+          <p style={S.subtitle}>{categoriaDetail.tipologia} — {categoriaDetail.applicabile}</p>
+          <CategoriaCommercialeDetailPage categoria={categoriaDetail} showToast={showToast} onOpenScheda={(s) => openScheda(s, "categorie", "Torna alle categorie commerciali", () => setCategoriaDetail(categoriaDetail))} />
+        </div>
+        {toast && <Toast msg={toast} />}
+      </div>
+    );
+  }
+
   const sW = sidebarExpanded ? 240 : 56;
 
   return (
@@ -315,9 +451,10 @@ export default function App() {
       <Sidebar page={page} onNav={nav} expanded={sidebarExpanded} />
       <div style={S.main(sW)}>
         {page === "dashboard" && <RichiestePage onOpenScheda={(s) => openScheda(s, "dashboard", "Torna alla dashboard")} />}
-        {page === "fornitori" && <FornitoriPage onOpenScheda={(s) => openScheda(s, "fornitori", "Torna ai fornitori")} />}
+        {page === "fornitori" && <FornitoriPage onOpenScheda={(s) => openScheda(s, "fornitori", "Torna ai fornitori")} onNuovoFornitore={() => setNuovoFornitore(true)} />}
+        {page === "categorie" && <CategorieCommercialiPage onOpenDetail={setCategoriaDetail} />}
         {page === "qualifiche" && <QualifichePage onOpenDetail={setQualificaDetail} />}
-        {page === "utenti" && <UtentiPage />}
+        {page === "valutazioni" && <ValutazioniPage />}
         {page === "datiPersonali" && <DatiPersonaliPage showToast={showToast} />}
       </div>
       {toast && <Toast msg={toast} />}
@@ -377,9 +514,10 @@ function Header({ expanded, onToggle }) {
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: icons.dashboard },
   { id: "fornitori", label: "Fornitori", icon: icons.fornitori },
-  { id: "qualifiche", label: "Qualifiche", icon: icons.qualifiche },
-  { id: "utenti", label: "Utenti", icon: icons.datiPersonali },
-  { id: "datiPersonali", label: "Dati Personali", icon: icons.datiPersonali },
+  { id: "categorie",    label: "Categorie Commerciali",       icon: icons.categorie },
+  { id: "valutazioni",  label: "Valutazioni",                 icon: icons.valutazioni },
+  { id: "qualifiche",   label: "Schede di qualifica (Legacy)", icon: icons.qualifiche },
+  { id: "datiPersonali", label: "Dati Personali",             icon: icons.datiPersonali },
 ];
 
 function Sidebar({ page, onNav, expanded }) {
@@ -408,9 +546,291 @@ function Toast({ msg }) {
   );
 }
 
+// ─── Nuovo Fornitore Form ─────────────────────────────────────────────
+function NuovoFornitoreForm({ showToast, onComplete }) {
+  const [nome, setNome] = useState("");
+  const [tipo, setTipo] = useState(null);              // "prof" | "soc"
+  const [tecnico, setTecnico] = useState(null);         // "tecnico" | "nontecnico"
+
+  // Non tecnico state
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownFilter, setDropdownFilter] = useState("");
+  const [categoriaSingola, setCategoriaSingola] = useState(null);
+  const [attivaUtenza, setAttivaUtenza] = useState(null);
+
+  // Tecnico state
+  const [showModal, setShowModal] = useState(false);
+  const [modalFilter, setModalFilter] = useState("");
+  const [categorieSelezionate, setCategorieSelezionate] = useState([]); // array of category objects
+
+  const nonTecnicheList = CATEGORIE_COMMERCIALI.filter(c => c.tipologia === "Non tecnica");
+  const tecnicheList    = CATEGORIE_COMMERCIALI.filter(c => c.tipologia === "Tecnica");
+
+  const categoriaSingolaObj = nonTecnicheList.find(c => c.id === categoriaSingola);
+
+  const filteredNonTecniche = nonTecnicheList.filter(c =>
+    c.nome.toLowerCase().includes(dropdownFilter.toLowerCase())
+  );
+  const filteredTecniche = tecnicheList.filter(c =>
+    c.nome.toLowerCase().includes(modalFilter.toLowerCase()) &&
+    !categorieSelezionate.find(s => s.id === c.id)
+  );
+
+  const removeCategoria = (id) => setCategorieSelezionate(prev => prev.filter(c => c.id !== id));
+  const addCategoria    = (cat) => { setCategorieSelezionate(prev => [...prev, cat]); };
+
+  const handleTecnicoChange = (val) => {
+    setTecnico(val);
+    setCategoriaSingola(null); setDropdownOpen(false); setDropdownFilter("");
+    setAttivaUtenza(null);
+    setCategorieSelezionate([]); setShowModal(false); setModalFilter("");
+  };
+
+  // Visibility
+  const showDynamicZone = tecnico !== null;
+  const showUtenza      = tecnico === "nontecnico" && categoriaSingola !== null;
+  const showSubmit      = tecnico === "tecnico"
+    ? categorieSelezionate.length > 0
+    : attivaUtenza !== null;
+
+  // Styles
+  const choiceBtn = (active) => ({
+    padding: "10px 24px", borderRadius: 8, fontSize: 14, fontWeight: 500,
+    cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+    background: active ? "#00833E" : "#fff",
+    color: active ? "#fff" : "#444",
+    border: active ? "1.5px solid #00833E" : "1.5px solid #ddd",
+  });
+
+  const sectionLabel = { fontSize: 11, fontWeight: 600, color: "#aaa", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 };
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      <style>{`@keyframes fadeInForm { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+      {/* ── Fixed top 3 cards ── */}
+
+      {/* Card 1 — Nome */}
+      <div style={{ ...S.card, marginBottom: 16 }}>
+        <div style={sectionLabel}>Nome del fornitore</div>
+        <input
+          style={S.input}
+          placeholder="Es. Mario Rossi, Tecnostudio Srl..."
+          value={nome}
+          onChange={e => setNome(e.target.value)}
+        />
+      </div>
+
+      {/* Card 2 — Tipo */}
+      <div style={{ ...S.card, marginBottom: 16 }}>
+        <div style={sectionLabel}>Tipo di fornitore</div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button style={choiceBtn(tipo === "prof")} onClick={() => setTipo("prof")}>
+            <Icon d={icons.prof} size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 8 }} />
+            Professionista
+          </button>
+          <button style={choiceBtn(tipo === "soc")} onClick={() => setTipo("soc")}>
+            <Icon d={icons.soc} size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 8 }} />
+            Società
+          </button>
+        </div>
+      </div>
+
+      {/* Card 3 — Tecnico / Non tecnico */}
+      <div style={{ ...S.card, marginBottom: 16 }}>
+        <div style={sectionLabel}>Tipologia fornitore</div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button style={choiceBtn(tecnico === "nontecnico")} onClick={() => handleTecnicoChange("nontecnico")}>
+            Fornitore non tecnico
+          </button>
+          <button style={choiceBtn(tecnico === "tecnico")} onClick={() => handleTecnicoChange("tecnico")}>
+            Fornitore tecnico
+          </button>
+        </div>
+      </div>
+
+      {/* ── Dynamic zone — appears once tecnico/nontecnico is chosen ── */}
+      {showDynamicZone && (
+        <div style={{ animation: "fadeInForm 0.2s ease" }}>
+
+          {/* ── Non tecnico route ── */}
+          {tecnico === "nontecnico" && (
+            <>
+              {/* Categoria — custom filterable dropdown */}
+              <div style={{ ...S.card, marginBottom: 16 }}>
+                <div style={sectionLabel}>Categoria commerciale</div>
+
+                {/* Trigger button */}
+                <div style={{ position: "relative" }}>
+                  <button
+                    style={{ ...S.input, textAlign: "left", cursor: "pointer", background: "#fff", color: categoriaSingola ? "#333" : "#aaa", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                    onClick={() => { setDropdownOpen(o => !o); setDropdownFilter(""); }}
+                  >
+                    <span>{categoriaSingolaObj ? categoriaSingolaObj.nome : "Seleziona una categoria..."}</span>
+                    <span style={{ fontSize: 10, color: "#aaa" }}>{dropdownOpen ? "▲" : "▼"}</span>
+                  </button>
+
+                  {/* Dropdown panel */}
+                  {dropdownOpen && (
+                    <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #ddd", borderRadius: 8, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", zIndex: 50, overflow: "hidden" }}>
+                      {/* Filter input */}
+                      <div style={{ padding: "10px 12px", borderBottom: "1px solid #f0f0ee" }}>
+                        <input
+                          autoFocus
+                          style={{ ...S.input, margin: 0 }}
+                          placeholder="Filtra categorie..."
+                          value={dropdownFilter}
+                          onChange={e => setDropdownFilter(e.target.value)}
+                        />
+                      </div>
+                      {/* List */}
+                      <div style={{ maxHeight: 240, overflowY: "auto" }}>
+                        {filteredNonTecniche.length === 0
+                          ? <div style={{ padding: "12px 16px", fontSize: 13, color: "#aaa", fontStyle: "italic" }}>Nessun risultato</div>
+                          : filteredNonTecniche.map(c => (
+                              <button key={c.id}
+                                style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 14, background: c.id === categoriaSingola ? "#eaf5ee" : "transparent", color: c.id === categoriaSingola ? "#006630" : "#333", border: "none", cursor: "pointer", fontFamily: "inherit", borderBottom: "1px solid #f5f5f3" }}
+                                onMouseOver={e => { if (c.id !== categoriaSingola) e.currentTarget.style.background = "#fafaf8"; }}
+                                onMouseOut={e => { if (c.id !== categoriaSingola) e.currentTarget.style.background = "transparent"; }}
+                                onClick={() => { setCategoriaSingola(c.id); setDropdownOpen(false); setAttivaUtenza(null); }}
+                              >
+                                {c.nome}
+                              </button>
+                            ))
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Attivare utenza */}
+              {showUtenza && (
+                <div style={{ ...S.card, marginBottom: 16, animation: "fadeInForm 0.2s ease" }}>
+                  <div style={sectionLabel}>Attivare utenza?</div>
+                  <p style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>Il fornitore riceverà un invito per accedere al portale.</p>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <button style={choiceBtn(attivaUtenza === "si")} onClick={() => setAttivaUtenza("si")}>Sì</button>
+                    <button style={choiceBtn(attivaUtenza === "no")} onClick={() => setAttivaUtenza("no")}>No</button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── Tecnico route ── */}
+          {tecnico === "tecnico" && (
+            <div style={{ ...S.card, marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={sectionLabel}>Categorie commerciali</div>
+                <button style={{ ...S.btnSecondary, padding: "6px 16px", fontSize: 13 }} onClick={() => { setShowModal(true); setModalFilter(""); }}>
+                  + Aggiungi categoria
+                </button>
+              </div>
+
+              {/* Selected categories list */}
+              {categorieSelezionate.length === 0
+                ? <p style={{ fontSize: 13, color: "#aaa", fontStyle: "italic" }}>Nessuna categoria aggiunta.</p>
+                : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {categorieSelezionate.map(c => (
+                      <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, background: "#eaf5ee", border: "1px solid #cce4d3" }}>
+                        <span style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 500 }}>{c.nome}</span>
+                        <button style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#842029", fontFamily: "inherit", padding: "2px 8px" }} onClick={() => removeCategoria(c.id)}>Rimuovi</button>
+                      </div>
+                    ))}
+                  </div>
+              }
+
+              {/* Utenza note */}
+              {categorieSelezionate.length > 0 && (
+                <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 8, background: "#f0faf4", border: "1px solid #cce4d3" }}>
+                  <p style={{ fontSize: 13, color: "#006630", margin: 0 }}>✓ L'utenza verrà attivata automaticamente per i fornitori tecnici.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ── Submit ── */}
+      {showSubmit && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+          <button
+            style={{ ...S.btnPrimary, padding: "11px 32px" }}
+            onMouseOver={e => e.target.style.background = "#007236"}
+            onMouseOut={e => e.target.style.background = "#00833E"}
+            onClick={onComplete}
+          >
+            Crea fornitore
+          </button>
+        </div>
+      )}
+
+      {/* ── Tecnico modal — Aggiungi categoria ── */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowModal(false)}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: "28px 32px", width: 520, maxWidth: "90vw", maxHeight: "80vh", display: "flex", flexDirection: "column", fontFamily: "'DM Sans',sans-serif" }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>Aggiungi categoria commerciale</h2>
+              <button style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#888" }} onClick={() => setShowModal(false)}>✕</button>
+            </div>
+            {/* Filter */}
+            <div style={{ marginBottom: 12 }}>
+              <input
+                autoFocus
+                style={S.input}
+                placeholder="Filtra categorie..."
+                value={modalFilter}
+                onChange={e => setModalFilter(e.target.value)}
+              />
+            </div>
+            {/* List */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {filteredTecniche.length === 0
+                ? <p style={{ fontSize: 13, color: "#aaa", fontStyle: "italic", padding: "8px 0" }}>Nessuna categoria disponibile.</p>
+                : filteredTecniche.map(c => (
+                    <button key={c.id}
+                      style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 14px", fontSize: 14, background: "transparent", color: "#333", border: "none", borderBottom: "1px solid #f0f0ee", cursor: "pointer", fontFamily: "inherit" }}
+                      onMouseOver={e => e.currentTarget.style.background = "#fafaf8"}
+                      onMouseOut={e => e.currentTarget.style.background = "transparent"}
+                      onClick={() => { addCategoria(c); setModalFilter(""); }}
+                    >
+                      {c.nome}
+                    </button>
+                  ))
+              }
+            </div>
+            {/* Footer */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+              <button style={S.btnGhost} onClick={() => setShowModal(false)}>Chiudi</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
 // ─── B2 Fornitori ────────────────────────────────────────────────────
-function FornitoriPage({ onOpenScheda }) {
+const categoriaTag = (stato) => {
+  const map = {
+    verde:  { bg: "#e6f4ed", color: "#006630", border: "#b2dfcc" },
+    giallo: { bg: "#FFF3CD", color: "#856404", border: "#FFE69C" },
+    rosso:  { bg: "#F8D7DA", color: "#842029", border: "#F5C2C7" },
+  };
+  const s = map[stato] || { bg: "#f0f0f0", color: "#555", border: "#ddd" };
+  return { display: "inline-block", padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 500,
+    background: s.bg, color: s.color, border: `1px solid ${s.border}`, whiteSpace: "nowrap" };
+};
+
+function FornitoriPage({ onOpenScheda, onNuovoFornitore }) {
   const [search, setSearch] = useState("");
+  const [filterProfilo, setFilterProfilo] = useState("");
+  const [filterTipo, setFilterTipo] = useState("");
+  const [filterCategoria, setFilterCategoria] = useState("");
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
 
@@ -419,7 +839,13 @@ function FornitoriPage({ onOpenScheda }) {
     else { setSortCol(col); setSortDir("asc"); }
   };
 
-  let data = SUPPLIERS.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+  let data = SUPPLIERS.filter(s => {
+    const matchName      = !search          || s.name.toLowerCase().includes(search.toLowerCase());
+    const matchProfilo   = !filterProfilo   || s.profilo === filterProfilo;
+    const matchTipo      = !filterTipo      || s.tipo === filterTipo;
+    const matchCategoria = !filterCategoria || s.categorie.some(c => c.nome.toLowerCase().includes(filterCategoria.toLowerCase()));
+    return matchName && matchProfilo && matchTipo && matchCategoria;
+  });
   if (sortCol) {
     data = [...data].sort((a, b) => {
       const va = a[sortCol] || "";
@@ -430,36 +856,159 @@ function FornitoriPage({ onOpenScheda }) {
 
   const SortIndicator = ({ col }) => sortCol === col ? <span style={{ marginLeft: 4, fontSize: 10 }}>{sortDir === "asc" ? "▲" : "▼"}</span> : null;
 
+  const sel = (w) => ({ ...S.input, width: w, padding: "8px 10px" });
+
   return (
     <div>
       <h1 style={S.h1}>Fornitori</h1>
       <p style={S.subtitle}>Elenco completo dei fornitori registrati</p>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <input style={{ ...S.input, maxWidth: 320 }} placeholder="Cerca fornitore..." value={search} onChange={e => setSearch(e.target.value)} />
-        <button style={S.btnPrimary}>Nuovo fornitore</button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <select style={sel(110)} value={filterProfilo} onChange={e => setFilterProfilo(e.target.value)}>
+            <option value="">Profilo</option>
+            <option value="prof">Professionista</option>
+            <option value="soc">Società</option>
+            <option value="montana">Montana</option>
+          </select>
+          <select style={sel(90)} value={filterTipo} onChange={e => setFilterTipo(e.target.value)}>
+            <option value="">Tipo</option>
+            <option value="T">T</option>
+            <option value="NT">NT</option>
+          </select>
+          <input style={sel(200)} placeholder="Fornitore..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input style={sel(180)} placeholder="Categoria..." value={filterCategoria} onChange={e => setFilterCategoria(e.target.value)} />
+        </div>
+        <button style={S.btnPrimary} onClick={onNuovoFornitore}>Nuovo fornitore</button>
       </div>
-      <div style={S.card}>
+      <div style={{ ...S.card, overflowX: "auto" }}>
         <table style={S.table}>
           <thead>
             <tr>
+              <th style={S.th}>Profilo</th>
               <th style={S.th}>Tipo</th>
               <th style={S.th} onClick={() => toggleSort("name")}>Nome / Ragione Sociale<SortIndicator col="name" /></th>
-              <th style={S.th} onClick={() => toggleSort("stato")}>Stato account<SortIndicator col="stato" /></th>
-              <th style={S.th}>Categoria</th>
+              <th style={S.th}>Categorie</th>
+              <th style={{ ...S.th, width: 60 }}>Val</th>
               <th style={S.th}>Azioni</th>
             </tr>
           </thead>
           <tbody>
             {data.map(s => (
-              <tr key={s.id} style={{ cursor: "default" }} onMouseOver={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8")} onMouseOut={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "")}>
-                <td style={S.td}><TypeIcon type={s.type} /></td>
+              <tr key={s.id} style={{ cursor: "default" }}
+                onMouseOver={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8")}
+                onMouseOut={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "")}>
+                <td style={S.td}><ProfiloIcon profilo={s.profilo} /></td>
+                <td style={S.td}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: s.tipo === "T" ? "#3b6db5" : "#6b3fa0",
+                    background: s.tipo === "T" ? "#e8f0fe" : "#f0ebff",
+                    border: `1px solid ${s.tipo === "T" ? "#c4d7f2" : "#d4bbf7"}`,
+                    borderRadius: 4, padding: "2px 7px" }}>{s.tipo}</span>
+                </td>
                 <td style={{ ...S.td, fontWeight: 500 }}>{s.name}</td>
-                <td style={S.td}><span style={statusBadge(s.stato)}>{s.stato}</span></td>
-                <td style={{ ...S.td, color: "#888" }}>{s.categoria}</td>
+                <td style={S.td}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {s.categorie.map((c, i) => (
+                      <span key={i} style={categoriaTag(c.stato)}>{c.nome}</span>
+                    ))}
+                  </div>
+                </td>
+                <td style={{ ...S.td, color: s.val === "N/D" ? "#aaa" : "#333", fontWeight: 500, fontSize: 13 }}>{s.val}</td>
                 <td style={S.td}><button style={{ ...S.btnSecondary, padding: "5px 12px", fontSize: 13 }} onClick={() => onOpenScheda(s)}>Vedi scheda →</button></td>
               </tr>
             ))}
-            {data.length === 0 && <tr><td colSpan={5} style={{ ...S.td, textAlign: "center", color: "#aaa", padding: 32 }}>Nessun fornitore trovato</td></tr>}
+            {data.length === 0 && <tr><td colSpan={6} style={{ ...S.td, textAlign: "center", color: "#aaa", padding: 32 }}>Nessun fornitore trovato</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Categorie Commerciali ───────────────────────────────────────────
+function CategorieCommercialiPage({ onOpenDetail }) {
+  const [search, setSearch] = useState("");
+  const [filterTipologia, setFilterTipologia] = useState("");
+  const [filterApplicabile, setFilterApplicabile] = useState("");
+
+  const tipologiaBadge = (tip) => {
+    const map = {
+      "Tecnica":      { bg: "#f0ebff", color: "#6b3fa0", border: "#d4bbf7" },
+      "Non tecnica":  { bg: "#e8f0fe", color: "#3b6db5", border: "#c4d7f2" },
+    };
+    const s = map[tip] || { bg: "#f0f0f0", color: "#555", border: "#ddd" };
+    return { display: "inline-block", padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+      background: s.bg, color: s.color, border: `1px solid ${s.border}`, whiteSpace: "nowrap" };
+  };
+
+  let data = CATEGORIE_COMMERCIALI.filter(c => {
+    const matchSearch      = !search           || c.nome.toLowerCase().includes(search.toLowerCase());
+    const matchTipologia   = !filterTipologia  || c.tipologia === filterTipologia;
+    const matchApplicabile = !filterApplicabile || c.applicabile === filterApplicabile || c.applicabile === "Entrambi";
+    return matchSearch && matchTipologia && matchApplicabile;
+  });
+
+  return (
+    <div>
+      <h1 style={S.h1}>Categorie Commerciali</h1>
+      <p style={S.subtitle}>Gestione delle categorie commerciali e dei relativi requisiti</p>
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <input
+          style={{ ...S.input, maxWidth: 280 }}
+          placeholder="Cerca categoria..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select
+          style={{ ...S.input, maxWidth: 200, color: filterTipologia ? "#333" : "#888" }}
+          value={filterTipologia}
+          onChange={e => setFilterTipologia(e.target.value)}
+        >
+          <option value="">Tipologia: Tutte</option>
+          <option value="Tecnica">Tecnica</option>
+          <option value="Non tecnica">Non tecnica</option>
+        </select>
+        <select
+          style={{ ...S.input, maxWidth: 200, color: filterApplicabile ? "#333" : "#888" }}
+          value={filterApplicabile}
+          onChange={e => setFilterApplicabile(e.target.value)}
+        >
+          <option value="">Applicabile a: Tutti</option>
+          <option value="Professionista">Professionista</option>
+          <option value="Società">Società</option>
+        </select>
+      </div>
+
+      {/* Table */}
+      <div style={{ ...S.card, overflowX: "auto" }}>
+        <table style={{ ...S.table, minWidth: 500 }}>
+          <thead>
+            <tr>
+              <th style={S.th}>Nome</th>
+              <th style={S.th}>Tipologia</th>
+              <th style={S.th}>Applicabile a</th>
+              <th style={S.th}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map(c => (
+              <tr key={c.id}
+                onMouseOver={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8")}
+                onMouseOut={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "")}>
+                <td style={{ ...S.td, fontWeight: 500 }}>{c.nome}</td>
+                <td style={S.td}><span style={tipologiaBadge(c.tipologia)}>{c.tipologia}</span></td>
+                <td style={{ ...S.td, fontSize: 13, color: "#888" }}>{c.applicabile}</td>
+                <td style={S.td}>
+                  <button style={{ ...S.btnSecondary, padding: "5px 12px", fontSize: 13 }} onClick={() => onOpenDetail(c)}>
+                    Gestisci →
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {data.length === 0 && (
+              <tr><td colSpan={4} style={{ ...S.td, textAlign: "center", color: "#aaa", padding: 32 }}>Nessuna categoria trovata</td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -492,7 +1041,7 @@ function QualifichePage({ onOpenDetail }) {
 
   return (
     <div>
-      <h1 style={S.h1}>Qualifiche</h1>
+      <h1 style={S.h1}>Schede di qualifica (Legacy)</h1>
       <p style={S.subtitle}>Catalogo qualifiche e monitoraggio utilizzo</p>
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <input style={{ ...S.input, maxWidth: 280 }} placeholder="Cerca qualifica..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -1041,6 +1590,398 @@ function QualificaDetailPage({ qualifica, showToast, onOpenScheda }) {
   );
 }
 
+// ─── Categoria Commerciale Detail Page ───────────────────────────────
+// Exact copy of QualificaDetailPage — to be modified independently
+
+const CATEGORIA_CERTIFICATI_MOCK = [
+  { id: 1, name: "Rossi & Partners S.r.l.", type: "soc", data: "15/01/2025", stato: "Attiva",  valutazione: 4 },
+  { id: 2, name: "GreenWorks S.r.l.",       type: "soc", data: "03/06/2024", stato: "Attiva",  valutazione: 5 },
+  { id: 3, name: "Marco Bianchi",           type: "prof", data: "20/09/2023", stato: "Scaduta", valutazione: 3 },
+  { id: 4, name: "Anna Colombo",            type: "prof", data: "12/03/2025", stato: "Attiva",  valutazione: 4 },
+  { id: 5, name: "Edilizia Moderna S.p.A.", type: "soc", data: "01/11/2024", stato: "Attiva",  valutazione: 2 },
+];
+
+const CATEGORIA_ABILITABILI_INIT = [
+  { id: 1, name: "TechBuild S.p.A.", type: "soc", statoQualifica: "Da revisionare" },
+  { id: 2, name: "Giulia Ferri",     type: "prof", statoQualifica: "Incompleto" },
+  { id: 3, name: "Luca Moretti",     type: "prof", statoQualifica: "Da revisionare" },
+  { id: 4, name: "GreenWorks S.r.l.",type: "soc", statoQualifica: "Incompleto" },
+];
+
+function CategoriaCommercialeDetailPage({ categoria, showToast, onOpenScheda }) {
+  const [tab, setTab] = useState("certificati");
+
+  // Tab 1 filters
+  const [searchFornitore, setSearchFornitore] = useState("");
+  const [filterTipo, setFilterTipo] = useState("");
+
+  // Tab 2 state
+  const [abilitabili] = useState(CATEGORIA_ABILITABILI_INIT);
+  const [searchCert2, setSearchCert2] = useState("");
+  const [filterTipo2, setFilterTipo2] = useState("");
+
+  // Tab 3 state
+  const [nuoveAggiunte, setNuoveAggiunte] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [modalSearch3, setModalSearch3] = useState("");
+  const [modalFilterTipo3, setModalFilterTipo3] = useState("");
+  const [pendingIds, setPendingIds] = useState(new Set());
+  const [searchNuove, setSearchNuove] = useState("");
+  const [filterTipoNuove, setFilterTipoNuove] = useState("");
+  const [richiesteAccesso, setRichiesteAccesso] = useState([
+    { id: 1, name: "Marco Bianchi", type: "prof", data: "2025-04-11" },
+  ]);
+
+  const isTecnica = categoria.tipologia === "Tecnica";
+
+  // If non-tecnica and somehow on the richieste tab, fall back to certificati
+  const activeTab = (!isTecnica && tab === "richieste") ? "certificati" : tab;
+
+  const filteredCertificati = CATEGORIA_CERTIFICATI_MOCK.filter(s => {
+    const matchName = !searchFornitore || s.name.toLowerCase().includes(searchFornitore.toLowerCase());
+    const matchTipo = !filterTipo || s.type === filterTipo;
+    return matchName && matchTipo;
+  });
+
+  return (
+    <div>
+      {/* Requisiti di qualifica */}
+      <div style={S.card}>
+        <h3 style={S.h3}>Requisiti di qualifica</h3>
+        <p style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Requisiti necessari per ottenere questa categoria commerciale.</p>
+
+        {/* Row helper */}
+        {(() => {
+          const Row = ({ icon, bg, label, desc, borderBottom }) => (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: borderBottom ? "1px solid #f0f0ee" : "none" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, marginTop: 2 }}>
+                {icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "#333" }}>{label}</div>
+                {desc && <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>{desc}</div>}
+              </div>
+            </div>
+          );
+
+          const SubField = ({ label }) => (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0 5px 40px" }}>
+              <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#ccc", flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: "#555" }}>{label}</span>
+            </div>
+          );
+
+          return (
+            <>
+              {/* Anagrafica */}
+              <Row icon="👤" bg="#e8f0fe" label="Qualifica Anagrafica" desc="Qualifica anagrafica standard" borderBottom />
+
+              {/* Amministrativa */}
+              <Row icon="📄" bg="#FFF3CD" label="Qualifica Amministrativa" desc="Qualifica amministrativa standard" borderBottom={categoria.tipologia === "Tecnica"} />
+
+              {/* Technical section — Tecnica only */}
+              {categoria.tipologia === "Tecnica" && <>
+                <Row icon="⚙️" bg="#eaf5ee" label={`Qualifica ${categoria.nome}`} desc={null} borderBottom={false} />
+                <SubField label="Ordine di iscrizione" />
+                <SubField label="Regione" />
+                <SubField label="N. di iscrizione" />
+                <SubField label="Data di iscrizione" />
+                <SubField label="In regola con CFP obbligatori" />
+              </>}
+            </>
+          );
+        })()}
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", borderBottom: "1px solid #e8e8e5", marginBottom: 20 }}>
+        <button style={S.tab(activeTab === "certificati")} onClick={() => setTab("certificati")}>Fornitori qualificati</button>
+        <button style={S.tab(activeTab === "certificazione")} onClick={() => setTab("certificazione")}>Fornitori in fase di qualifica</button>
+        {isTecnica && <button style={S.tab(activeTab === "richieste")} onClick={() => setTab("richieste")}>Gestione accesso alla categoria commerciale</button>}
+      </div>
+
+      {/* Tab 1 — Fornitori qualificati */}
+      {activeTab === "certificati" && (
+        <div style={S.card}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+            <select
+              style={{ ...S.input, maxWidth: 200, color: filterTipo ? "#333" : "#888" }}
+              value={filterTipo}
+              onChange={e => setFilterTipo(e.target.value)}
+            >
+              <option value="">Tipo: Tutti</option>
+              <option value="prof">Professionista</option>
+              <option value="soc">Società</option>
+            </select>
+            <input
+              style={{ ...S.input, maxWidth: 240 }}
+              placeholder="Cerca fornitore..."
+              value={searchFornitore}
+              onChange={e => setSearchFornitore(e.target.value)}
+            />
+          </div>
+          {filteredCertificati.length === 0
+            ? <p style={{ color: "#888", fontSize: 14, fontStyle: "italic" }}>Nessun fornitore trovato.</p>
+            : <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Tipo</th>
+                  <th style={S.th}>Fornitore</th>
+                  <th style={S.th}>Valutazione</th>
+                  <th style={S.th}>Data certificazione</th>
+                  <th style={S.th}>Azioni</th>
+                </tr></thead>
+                <tbody>
+                  {filteredCertificati.map(s => (
+                    <tr key={s.id} onMouseOver={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8")} onMouseOut={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "")}>
+                      <td style={S.td}><TypeIcon type={s.type} /></td>
+                      <td style={{ ...S.td, fontWeight: 500 }}>{s.name}</td>
+                      <td style={S.td}><StarDisplay value={s.valutazione} /></td>
+                      <td style={{ ...S.td, color: "#888" }}>{s.data}</td>
+                      <td style={S.td}>
+                        <button
+                          style={{ ...S.btnSecondary, padding: "5px 12px", fontSize: 13 }}
+                          onClick={() => onOpenScheda({ name: s.name, type: s.type })}
+                        >Vedi scheda →</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+          }
+        </div>
+      )}
+
+      {/* Tab 2 — Fornitori in fase di qualifica */}
+      {activeTab === "certificazione" && (
+        <div style={S.card}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+            <select
+              style={{ ...S.input, maxWidth: 200, color: filterTipo2 ? "#333" : "#888" }}
+              value={filterTipo2}
+              onChange={e => setFilterTipo2(e.target.value)}
+            >
+              <option value="">Tipo: Tutti</option>
+              <option value="prof">Professionista</option>
+              <option value="soc">Società</option>
+            </select>
+            <input
+              style={{ ...S.input, maxWidth: 240 }}
+              placeholder="Cerca fornitore..."
+              value={searchCert2}
+              onChange={e => setSearchCert2(e.target.value)}
+            />
+          </div>
+          {(() => {
+            const filtered = abilitabili.filter(s =>
+              (!searchCert2 || s.name.toLowerCase().includes(searchCert2.toLowerCase())) &&
+              (!filterTipo2 || s.type === filterTipo2)
+            );
+            return filtered.length === 0
+              ? <p style={{ color: "#888", fontSize: 14, fontStyle: "italic" }}>Nessun fornitore trovato.</p>
+              : <table style={S.table}>
+                  <thead><tr>
+                    <th style={S.th}>Tipo</th>
+                    <th style={S.th}>Fornitore</th>
+                    <th style={S.th}>Stato qualifica</th>
+                    <th style={S.th}>Azioni</th>
+                  </tr></thead>
+                  <tbody>
+                    {filtered.map(s => (
+                      <tr key={s.id} onMouseOver={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8")} onMouseOut={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "")}>
+                        <td style={S.td}><TypeIcon type={s.type} /></td>
+                        <td style={{ ...S.td, fontWeight: 500 }}>{s.name}</td>
+                        <td style={S.td}>
+                          <span style={s.statoQualifica === "Da revisionare" ? statusBadge("In revisione") : statusBadge("Sospeso")}>
+                            {s.statoQualifica}
+                          </span>
+                        </td>
+                        <td style={S.td}>
+                          <button
+                            style={{ ...S.btnSecondary, padding: "5px 12px", fontSize: 13 }}
+                            onClick={() => onOpenScheda({ name: s.name, type: s.type })}
+                          >Vedi scheda →</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>;
+          })()}
+        </div>
+      )}
+
+      {/* Tab 3 — Gestione accesso alla categoria commerciale — Tecnica only */}
+      {isTecnica && activeTab === "richieste" && (() => {
+        const filteredNuove = nuoveAggiunte.filter(s =>
+          (!searchNuove || s.name.toLowerCase().includes(searchNuove.toLowerCase())) &&
+          (!filterTipoNuove || s.type === filterTipoNuove)
+        );
+        const modalSuppliers = SUPPLIERS.filter(s =>
+          (!modalSearch3 || s.name.toLowerCase().includes(modalSearch3.toLowerCase())) &&
+          (!modalFilterTipo3 || s.type === modalFilterTipo3)
+        );
+
+        const handleAggiungiModal = (s) => {
+          setPendingIds(prev => {
+            const next = new Set(prev);
+            if (next.has(s.id)) { next.delete(s.id); } else { next.add(s.id); }
+            return next;
+          });
+        };
+
+        const handleConfermaModal = () => {
+          const toAdd = SUPPLIERS.filter(s => pendingIds.has(s.id) && !nuoveAggiunte.find(n => n.id === s.id));
+          setNuoveAggiunte(prev => [...prev, ...toAdd]);
+          setPendingIds(new Set());
+          setShowAddModal(false);
+        };
+
+        const handleRimuoviNuova = (id) => setNuoveAggiunte(prev => prev.filter(s => s.id !== id));
+        const handleRespingi = (id) => setRichiesteAccesso(prev => prev.filter(r => r.id !== id));
+        const handleConfermaRichiesta = (r) => {
+          if (!nuoveAggiunte.find(n => n.id === r.id)) {
+            setNuoveAggiunte(prev => [...prev, { id: r.id, name: r.name, type: r.type }]);
+          }
+          setRichiesteAccesso(prev => prev.filter(x => x.id !== r.id));
+        };
+
+        return (
+          <>
+            {/* Sheet — Nuove aggiunte */}
+            <div style={S.card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ ...S.h3, margin: 0 }}>Nuove aggiunte</h3>
+                <button style={{ ...S.btnSecondary, padding: "6px 16px", fontSize: 13 }} onClick={() => { setShowAddModal(true); setModalSearch3(""); setModalFilterTipo3(""); setPendingIds(new Set()); }}>
+                  Aggiungi fornitore
+                </button>
+              </div>
+              <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+                <select style={{ ...S.input, maxWidth: 200, color: filterTipoNuove ? "#333" : "#888" }} value={filterTipoNuove} onChange={e => setFilterTipoNuove(e.target.value)}>
+                  <option value="">Tipo: Tutti</option>
+                  <option value="prof">Professionista</option>
+                  <option value="soc">Società</option>
+                </select>
+                <input style={{ ...S.input, maxWidth: 240 }} placeholder="Cerca fornitore..." value={searchNuove} onChange={e => setSearchNuove(e.target.value)} />
+              </div>
+              {filteredNuove.length === 0
+                ? <p style={{ fontSize: 14, color: "#aaa", fontStyle: "italic" }}>Nessun fornitore in coda.</p>
+                : <table style={S.table}>
+                    <thead><tr>
+                      <th style={S.th}>Tipo</th>
+                      <th style={S.th}>Fornitore</th>
+                      <th style={S.th}></th>
+                    </tr></thead>
+                    <tbody>
+                      {filteredNuove.map(s => (
+                        <tr key={s.id} onMouseOver={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8")} onMouseOut={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "")}>
+                          <td style={S.td}><TypeIcon type={s.type} /></td>
+                          <td style={{ ...S.td, fontWeight: 500 }}>{s.name}</td>
+                          <td style={{ ...S.td, textAlign: "right" }}>
+                            <button style={{ ...S.btnGhost, padding: "5px 14px", fontSize: 13, color: "#842029", borderColor: "#f5c2c7" }} onClick={() => handleRimuoviNuova(s.id)}>Rimuovi</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+              }
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+                <button style={{ ...S.btnPrimary, padding: "9px 22px" }} onMouseOver={e => e.target.style.background = "#007236"} onMouseOut={e => e.target.style.background = "#00833E"}>
+                  Attiva iter
+                </button>
+              </div>
+            </div>
+
+            {/* Sheet — Richieste di accesso */}
+            <div style={{ ...S.card, marginTop: 16 }}>
+              <h3 style={{ ...S.h3, marginBottom: 16 }}>Richieste di accesso</h3>
+              {richiesteAccesso.length === 0
+                ? <p style={{ fontSize: 14, color: "#aaa", fontStyle: "italic" }}>Nessuna richiesta in attesa.</p>
+                : <table style={S.table}>
+                    <thead><tr>
+                      <th style={S.th}>Tipo</th>
+                      <th style={S.th}>Fornitore</th>
+                      <th style={S.th}>Data</th>
+                      <th style={{ ...S.th, textAlign: "right" }}>Azioni</th>
+                    </tr></thead>
+                    <tbody>
+                      {richiesteAccesso.map(r => (
+                        <tr key={r.id} onMouseOver={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8")} onMouseOut={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "")}>
+                          <td style={S.td}><TypeIcon type={r.type} /></td>
+                          <td style={{ ...S.td, fontWeight: 500 }}>{r.name}</td>
+                          <td style={{ ...S.td, color: "#888" }}>{r.data}</td>
+                          <td style={{ ...S.td, textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                              <button style={{ ...S.btnGhost, padding: "5px 14px", fontSize: 13, color: "#842029", borderColor: "#f5c2c7" }} onClick={() => handleRespingi(r.id)}>Respingi</button>
+                              <button style={{ ...S.btnPrimary, padding: "5px 14px", fontSize: 13 }} onMouseOver={e => e.target.style.background = "#007236"} onMouseOut={e => e.target.style.background = "#00833E"} onClick={() => handleConfermaRichiesta(r)}>Conferma</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+              }
+            </div>
+
+            {/* Overlay — Aggiungi fornitore */}
+            {showAddModal && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowAddModal(false)}>
+                <div style={{ background: "#fff", borderRadius: 12, padding: "28px 32px", width: 560, maxWidth: "90vw", maxHeight: "80vh", overflowY: "auto", fontFamily: "'DM Sans',sans-serif" }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                    <h2 style={{ fontSize: 18, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>Aggiungi fornitore</h2>
+                    <button style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#888" }} onClick={() => setShowAddModal(false)}>✕</button>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                    <select style={{ ...S.input, maxWidth: 180, color: modalFilterTipo3 ? "#333" : "#888" }} value={modalFilterTipo3} onChange={e => setModalFilterTipo3(e.target.value)}>
+                      <option value="">Tipo: Tutti</option>
+                      <option value="prof">Professionista</option>
+                      <option value="soc">Società</option>
+                    </select>
+                    <input style={{ ...S.input, flex: 1 }} placeholder="Cerca fornitore..." value={modalSearch3} onChange={e => setModalSearch3(e.target.value)} />
+                  </div>
+                  <table style={S.table}>
+                    <thead><tr>
+                      <th style={S.th}>Tipo</th>
+                      <th style={S.th}>Nome</th>
+                      <th style={{ ...S.th, width: 100 }}></th>
+                    </tr></thead>
+                    <tbody>
+                      {modalSuppliers.map(s => {
+                        const isPending = pendingIds.has(s.id);
+                        const alreadyAdded = !!nuoveAggiunte.find(n => n.id === s.id);
+                        return (
+                          <tr key={s.id} onMouseOver={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8")} onMouseOut={e => e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "")}>
+                            <td style={S.td}><TypeIcon type={s.type} /></td>
+                            <td style={{ ...S.td, fontWeight: 500 }}>{s.name}</td>
+                            <td style={{ ...S.td, textAlign: "right" }}>
+                              {alreadyAdded
+                                ? <span style={{ fontSize: 12, color: "#aaa", fontStyle: "italic" }}>Già aggiunto</span>
+                                : isPending
+                                  ? <button style={{ ...S.btnGhost, padding: "4px 12px", fontSize: 12, color: "#842029", borderColor: "#f5c2c7" }} onClick={() => handleAggiungiModal(s)}>Annulla</button>
+                                  : <button style={{ ...S.btnSecondary, padding: "4px 12px", fontSize: 12 }} onClick={() => handleAggiungiModal(s)}>Aggiungi</button>
+                              }
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {modalSuppliers.length === 0 && <tr><td colSpan={3} style={{ ...S.td, textAlign: "center", color: "#aaa", padding: 24 }}>Nessun fornitore trovato</td></tr>}
+                    </tbody>
+                  </table>
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20, gap: 10 }}>
+                    <button style={S.btnGhost} onClick={() => setShowAddModal(false)}>Chiudi</button>
+                    <button style={{ ...S.btnPrimary, padding: "9px 22px" }} onMouseOver={e => e.target.style.background = "#007236"} onMouseOut={e => e.target.style.background = "#00833E"} onClick={handleConfermaModal}>
+                      Conferma
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+    </div>
+  );
+}
+
 // ─── Scheda Fornitore (tabbed view) ──────────────────────────────────
 function SchedaFornitore({ supplier, showToast }) {
   const [tab, setTab] = useState("anagrafica");
@@ -1075,6 +2016,11 @@ function SchedaFornitore({ supplier, showToast }) {
 
   return (
     <div>
+      {/* ── Title row ── */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={S.h1}>{supplier.name}</h1>
+        <p style={{ ...S.subtitle, marginBottom: 0 }}>Scheda Fornitore — {supplier.profilo === "prof" ? "Professionista" : supplier.profilo === "montana" ? "Montana" : "Società"}</p>
+      </div>
       {/* ── Recap banner ── */}
       <div style={{ ...S.card, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "20px 32px", marginBottom: 20 }}>
         {/* Schede da Validare */}
@@ -1224,10 +2170,103 @@ function SchedaFornitore({ supplier, showToast }) {
         <button style={S.tab(tab === "anagrafica")} onClick={() => setTab("anagrafica")}>Anagrafica</button>
         <button style={S.tab(tab === "amministrativa")} onClick={() => setTab("amministrativa")}>Amministrativa</button>
         <button style={S.tab(tab === "qualifiche")} onClick={() => setTab("qualifiche")}>Qualifiche Tecniche</button>
+        <button style={S.tab(tab === "valutazioni")} onClick={() => setTab("valutazioni")}>Valutazioni</button>
       </div>
       {tab === "anagrafica" && <SchedaAnagrafica showToast={showToast} />}
       {tab === "amministrativa" && <SchedaAmministrativa showToast={showToast} />}
       {tab === "qualifiche" && <SchedaQualifiche showToast={showToast} />}
+      {tab === "valutazioni" && <SchedaValutazioni />}
+    </div>
+  );
+}
+
+// ─── Scheda Valutazioni ──────────────────────────────────────────────
+function StarDisplay({ value, max = 5, starSize = 18, numFontSize = 13 }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", gap: 3 }}>
+        {Array.from({ length: max }, (_, i) => (
+          <svg key={i} width={starSize} height={starSize} viewBox="0 0 24 24"
+            fill={i < value ? "#f5a623" : "none"}
+            stroke={i < value ? "#f5a623" : "#ddd"}
+            strokeWidth="1.5">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        ))}
+      </div>
+      <span style={{ fontSize: numFontSize, color: "#888", fontWeight: 500, minWidth: 28 }}>{value}/{max}</span>
+    </div>
+  );
+}
+
+function SchedaValutazioni() {
+  // Sheet 1 — Valutazioni complessive (read-only)
+  const complessive = [
+    { id: "economica",    label: "Valutazione Economica",   valore: 3 },
+    { id: "servicelead", label: "Valutazione Service Lead", valore: 2 },
+  ];
+
+  // Sheet 2 — Valutazioni di commessa (read-only, from portal)
+  const commessa = { puntualita: 3, serieta: 4, competenza: 3 };
+  const mediaCommessa = Math.round((commessa.puntualita + commessa.serieta + commessa.competenza) / 3);
+
+  // Overall average across all values
+  const tuttiValori = [...complessive.map(r => r.valore), commessa.puntualita, commessa.serieta, commessa.competenza];
+  const mediaComplessiva = Math.round(tuttiValori.reduce((a, b) => a + b, 0) / tuttiValori.length);
+
+  const rowStyle = { display: "flex", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #f0f0ee" };
+  const labelStyle = { fontSize: 14, fontWeight: 500, color: "#333", flex: 1 };
+
+  return (
+    <div>
+
+      {/* ── Sheet 0 — Valutazione complessiva fornitore ── */}
+      <div style={S.card}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h3 style={{ ...S.h3, margin: 0, whiteSpace: "nowrap" }}>Valutazione complessiva fornitore</h3>
+          <StarDisplay value={mediaComplessiva} starSize={23} numFontSize={16} />
+        </div>
+      </div>
+
+      {/* ── Sheet 1 — Valutazioni generali ── */}
+      <div style={S.card}>
+        <h3 style={S.h3}>Valutazioni generali</h3>
+        <p style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Valutazioni inserite manualmente dal Service Lead.</p>
+        {complessive.map((row, i) => (
+          <div key={row.id} style={{ ...rowStyle, borderBottom: i === complessive.length - 1 ? "none" : "1px solid #f0f0ee" }}>
+            <span style={labelStyle}>{row.label}</span>
+            <StarDisplay value={row.valore} />
+          </div>
+        ))}
+      </div>
+
+      {/* ── Sheet 2 — Valutazioni di commessa ── */}
+      <div style={S.card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+          <h3 style={S.h3}>Valutazioni di commessa</h3>
+          <button style={{ ...S.btnPrimary, padding: "6px 16px", fontSize: 13 }}
+            onMouseOver={e => e.target.style.background = "#007236"}
+            onMouseOut={e => e.target.style.background = "#00833E"}>
+            Ricarica
+          </button>
+        </div>
+        <p style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Valutazioni aggregate dalle valutazioni di commessa di Progeta. Clicca Ricarica per ricaricare.</p>
+        <div style={{ ...rowStyle, background: "#fafaf8", margin: "0 -24px", padding: "14px 24px" }}>
+          <span style={{ ...labelStyle, fontWeight: 600 }}>Valutazione Complessiva</span>
+          <StarDisplay value={mediaCommessa} />
+        </div>
+        {[
+          { label: "Puntualità",  valore: commessa.puntualita },
+          { label: "Serietà",     valore: commessa.serieta },
+          { label: "Competenza",  valore: commessa.competenza },
+        ].map((row, i, arr) => (
+          <div key={row.label} style={{ ...rowStyle, borderBottom: i === arr.length - 1 ? "none" : "1px solid #f0f0ee" }}>
+            <span style={labelStyle}>{row.label}</span>
+            <StarDisplay value={row.valore} />
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
@@ -1659,19 +2698,205 @@ function SchedaQualifiche({ showToast }) {
   );
 }
 
-// ─── Utenti (placeholder) ────────────────────────────────────────────
-function UtentiPage() {
+// ─── Valutazioni ─────────────────────────────────────────────────────
+// ─── Valutazioni helpers ─────────────────────────────────────────────
+const VALUTAZIONI_INIT = SUPPLIERS.map(s => ({
+  id: s.id,
+  name: s.name,
+  profilo: s.profilo,
+  tipo: s.tipo,
+  categorie: s.categorie,
+  val: s.val === "N/D" ? null : parseInt(s.val),
+  ultimaValutazione: s.id === 1 ? "2025-01-15"
+                   : s.id === 2 ? "2025-03-02"
+                   : s.id === 3 ? "2024-11-20"
+                   : s.id === 4 ? null
+                   : s.id === 5 ? "2025-02-10"
+                   : s.id === 6 ? "2025-03-28"
+                   : s.id === 7 ? null
+                   : s.id === 8 ? "2024-12-05"
+                   : null,
+}));
+
+function StarPicker({ value, onChange }) {
+  const [hover, setHover] = useState(null);
+  return (
+    <div style={{ display: "flex", gap: 4 }}>
+      {[1,2,3,4,5].map(n => {
+        const filled = n <= (hover ?? value ?? 0);
+        return (
+          <svg key={n} width={28} height={28} viewBox="0 0 24 24"
+            fill={filled ? "#f5a623" : "none"}
+            stroke={filled ? "#f5a623" : "#ccc"}
+            strokeWidth="1.5"
+            style={{ cursor: "pointer", transition: "fill 0.1s, stroke 0.1s" }}
+            onMouseEnter={() => setHover(n)}
+            onMouseLeave={() => setHover(null)}
+            onClick={() => onChange(n)}>
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        );
+      })}
+    </div>
+  );
+}
+
+function ValutazioneList({ suppliers, data, setData }) {
+  const [search, setSearch]         = useState("");
+  const [sortDir, setSortDir]       = useState("asc");
+  const [expandedId, setExpandedId] = useState(null);
+  const [pendingVal, setPendingVal] = useState(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const parseDate = (d) => d ? new Date(d).getTime() : null;
+
+  let rows = data
+    .filter(s => suppliers.includes(s.id))
+    .filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()));
+
+  rows = [...rows].sort((a, b) => {
+    const da = parseDate(a.ultimaValutazione);
+    const db = parseDate(b.ultimaValutazione);
+    if (da === null && db === null) return 0;
+    if (da === null) return sortDir === "asc" ? 1 : -1;
+    if (db === null) return sortDir === "asc" ? -1 : 1;
+    return sortDir === "asc" ? da - db : db - da;
+  });
+
+  const handleExpand = (id, currentVal) => {
+    if (expandedId === id) { setExpandedId(null); setPendingVal(null); return; }
+    setExpandedId(id);
+    setPendingVal(null);
+  };
+
+  const handleSave = (id) => {
+    if (pendingVal === null) return;
+    setData(prev => prev.map(s => s.id === id
+      ? { ...s, val: pendingVal, ultimaValutazione: today }
+      : s
+    ));
+    setExpandedId(null);
+    setPendingVal(null);
+  };
+
+  const thS = { ...S.th, cursor: "default" };
+  const thSort = { ...S.th, cursor: "pointer", userSelect: "none" };
+
   return (
     <div>
-      <h1 style={S.h1}>Utenti</h1>
-      <p style={S.subtitle}>Gestione degli utenti del sistema</p>
-      <div style={S.card}>
-        <div style={S.placeholder}>
-          <Icon d={icons.datiPersonali} size={40} style={{ color: "#ccc" }} />
-          <span>Sezione in costruzione</span>
-          <span style={{ fontSize: 13, color: "#bbb" }}>La gestione utenti sarà disponibile in una versione futura.</span>
-        </div>
+      {/* Filter bar */}
+      <div style={{ marginBottom: 16 }}>
+        <input
+          style={{ ...S.input, maxWidth: 280 }}
+          placeholder="Cerca fornitore..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
       </div>
+
+      {/* Table */}
+      <div style={{ ...S.card, overflowX: "auto", padding: 0 }}>
+        <table style={{ ...S.table, minWidth: 620 }}>
+          <thead>
+            <tr>
+              <th style={thS}>Profilo</th>
+              <th style={thS}>Nome</th>
+              <th style={thS}>Categorie</th>
+              <th style={thSort} onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}>
+                Ultima valutazione <span style={{ fontSize: 10 }}>{sortDir === "asc" ? "▲" : "▼"}</span>
+              </th>
+              <th style={thS}>Val</th>
+              <th style={thS}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(s => {
+              const isExpanded = expandedId === s.id;
+              return (
+                <React.Fragment key={s.id}>
+                  <tr
+                    onMouseOver={e => { if (!isExpanded) e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = "#fafaf8"); }}
+                    onMouseOut={e => { if (!isExpanded) e.currentTarget.querySelectorAll("td").forEach(td => td.style.background = ""); }}>
+                    <td style={S.td}><ProfiloIcon profilo={s.profilo} /></td>
+                    <td style={{ ...S.td, fontWeight: 500 }}>{s.name}</td>
+                    <td style={S.td}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                        {s.categorie.map((c, i) => <span key={i} style={categoriaTag(c.stato)}>{c.nome}</span>)}
+                      </div>
+                    </td>
+                    <td style={{ ...S.td, color: s.ultimaValutazione ? "#888" : "#ccc", fontSize: 13 }}>
+                      {s.ultimaValutazione || "Mai"}
+                    </td>
+                    <td style={{ ...S.td, fontWeight: 500, fontSize: 13, color: s.val ? "#333" : "#aaa" }}>
+                      {s.val ? `${s.val}/5` : "N/D"}
+                    </td>
+                    <td style={S.td}>
+                      <button
+                        style={{ ...S.btnSecondary, padding: "5px 14px", fontSize: 13,
+                          ...(isExpanded ? { background: "#e6f4ed", borderColor: "#00833E" } : {}) }}
+                        onClick={() => handleExpand(s.id, s.val)}>
+                        {isExpanded ? "Chiudi" : "Valuta"}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Expanded grading row */}
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: "16px 24px", background: "#f7fdf9", borderBottom: "1px solid #f0f0ee" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                          <StarPicker value={pendingVal ?? s.val ?? 0} onChange={setPendingVal} />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              style={{ ...S.btnPrimary, padding: "6px 20px", fontSize: 13,
+                                opacity: pendingVal === null ? 0.4 : 1, cursor: pendingVal === null ? "not-allowed" : "pointer" }}
+                              onMouseOver={e => { if (pendingVal !== null) e.target.style.background = "#007236"; }}
+                              onMouseOut={e => e.target.style.background = "#00833E"}
+                              onClick={() => handleSave(s.id)}>
+                              Salva
+                            </button>
+                            <button style={{ ...S.btnGhost, padding: "6px 20px", fontSize: 13 }}
+                              onClick={() => { setExpandedId(null); setPendingVal(null); }}>
+                              Annulla
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+            {rows.length === 0 && (
+              <tr><td colSpan={6} style={{ ...S.td, textAlign: "center", color: "#aaa", padding: 32 }}>Nessun fornitore trovato</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ValutazioniPage() {
+  const [tab, setTab]   = useState("nonTecnici");
+  const [data, setData] = useState(VALUTAZIONI_INIT);
+
+  const ntIds = SUPPLIERS.filter(s => s.tipo === "NT").map(s => s.id);
+  const tIds  = SUPPLIERS.filter(s => s.tipo === "T").map(s => s.id);
+
+  return (
+    <div>
+      <h1 style={S.h1}>Valutazioni</h1>
+      <p style={S.subtitle}>Valutazioni dei fornitori per categoria commerciale</p>
+
+      <div style={{ display: "flex", borderBottom: "1px solid #e8e8e5", marginBottom: 20 }}>
+        <button style={S.tab(tab === "nonTecnici")} onClick={() => setTab("nonTecnici")}>Fornitori non tecnici</button>
+        <button style={S.tab(tab === "tecnici")}    onClick={() => setTab("tecnici")}>Fornitori Tecnici</button>
+      </div>
+
+      {tab === "nonTecnici" && <ValutazioneList suppliers={ntIds} data={data} setData={setData} />}
+      {tab === "tecnici"    && <ValutazioneList suppliers={tIds}  data={data} setData={setData} />}
     </div>
   );
 }
